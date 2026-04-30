@@ -212,44 +212,74 @@ def compare():
     treatments = {}
 
     for system in ["Ayurveda", "Homeopathy", "Allopathy"]:
-        text_snippets = []
+        treatment_snippets = []
+        medicine_snippets = []
         price_snippet = ""
 
-        # Step 2: Web search for each treatment system — each step is independent
+        # Step 2: Three focused searches per system
         with DDGS() as ddgs:
+            # Search 1: How this system specifically treats the disease
             try:
-                text_results = list(ddgs.text(f"{system} treatment for {disease}", max_results=5))
-                text_snippets = [r.get("body", "") for r in text_results[:4]]
+                r1 = list(ddgs.text(
+                    f"best {system} treatment {disease} specific remedies India",
+                    max_results=6
+                ))
+                treatment_snippets = [r.get("body", "") for r in r1]
             except Exception as e:
-                print(f"[DDG text error — {system}]: {e}")
+                print(f"[DDG treatment error — {system}]: {e}")
 
-            # Images are served as static assets from the frontend public folder
-
+            # Search 2: Named medicines/herbs/drugs used
             try:
-                price_results = list(
-                    ddgs.text(f"{system} medicine price {disease} India", max_results=3)
-                )
-                price_snippet = " ".join([r.get("body", "") for r in price_results[:2]])
+                r2 = list(ddgs.text(
+                    f"{system} medicines names for {disease} recommended doctors",
+                    max_results=5
+                ))
+                medicine_snippets = [r.get("body", "") for r in r2]
+            except Exception as e:
+                print(f"[DDG medicine error — {system}]: {e}")
+
+            # Search 3: Prices
+            try:
+                r3 = list(ddgs.text(
+                    f"cost of {system} treatment {disease} India price per month",
+                    max_results=4
+                ))
+                price_snippet = " ".join([r.get("body", "") for r in r3[:3]])
             except Exception as e:
                 print(f"[DDG price error — {system}]: {e}")
 
-        # Step 3: Synthesize with Gemini
-        context = "\n".join(text_snippets)
-        synth_prompt = f"""Based on these search results about {system} treatment for {disease}:
+        # Step 3: Strict Gemini synthesis
+        treatment_context = "\n".join(treatment_snippets)
+        medicine_context  = "\n".join(medicine_snippets)
 
-{context}
+        synth_prompt = f"""You are a medical information expert. Use the web search results below to answer specifically about {system} treatment for {disease}.
 
-Price context (from pharmacy search): {price_snippet[:700]}
+=== TREATMENT SEARCH RESULTS ===
+{treatment_context[:1200]}
 
-Return a JSON object with exactly these fields:
+=== MEDICINE NAME SEARCH RESULTS ===
+{medicine_context[:1000]}
+
+=== PRICE SEARCH RESULTS ===
+{price_snippet[:600]}
+
+Return a JSON object with exactly these fields. Be SPECIFIC — use real named medicines, herbs, or drugs, NOT generic categories:
 {{
-  "description": "2-3 sentence clear overview of how {system} treats or manages {disease}",
-  "key_medicines": ["medicine 1", "medicine 2", "medicine 3", "medicine 4"],
-  "approach": "One-line philosophy of this treatment system for this condition",
-  "price_range": "Approximate cost in INR — extract from price context above if available, otherwise use your own knowledge to give a realistic typical range (e.g. ₹80–₹300 per month). Never say 'Varies by provider' — always give a number range."
+  "description": "3 sentences: what {system} believes about {disease}, how it treats it, and the main goal of treatment. Be specific to {disease}, not generic.",
+  "key_medicines": [
+    "Actual named medicine/herb/drug 1 (brief note on what it does)",
+    "Actual named medicine/herb/drug 2 (brief note)",
+    "Actual named medicine/herb/drug 3 (brief note)",
+    "Actual named medicine/herb/drug 4 (brief note)"
+  ],
+  "approach": "One crisp sentence on {system}'s core philosophy for treating {disease} specifically.",
+  "price_range": "Realistic monthly cost in INR based on search results or your knowledge. Give a number range like ₹300–₹1500 per month. Never say varies."
 }}
 
-Return ONLY valid JSON. No markdown code fences, no extra text."""
+IMPORTANT:
+- key_medicines must contain REAL names (e.g. for Ayurveda: Karela, Gurmar, Vijayasar; for Homeopathy: Syzygium jambolanum, Uranium nitricum; for Allopathy: Metformin, Glipizide, Januvia).
+- Never use generic terms like "Plant-derived products" or "Mineral-based remedies".
+- Return ONLY valid JSON. No markdown, no extra text."""
 
         try:
             resp = llm.generate_content(synth_prompt)
@@ -257,10 +287,10 @@ Return ONLY valid JSON. No markdown code fences, no extra text."""
         except Exception as e:
             print(f"[Gemini synthesis error — {system}]: {e}")
             synth = {
-                "description": f"{system} has established protocols for treating {disease}. Consult a qualified practitioner for personalized guidance.",
+                "description": f"{system} has established protocols for treating {disease}.",
                 "key_medicines": [],
-                "approach": f"Traditional {system} approach",
-                "price_range": "Varies by provider",
+                "approach": f"{system} approach to {disease}",
+                "price_range": "₹200–₹1000 per month",
             }
 
         treatments[system.lower()] = {**synth}
