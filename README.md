@@ -2,6 +2,12 @@
 
 AyurBot is a state-of-the-art AI assistant powered by the **Charaka Samhita**, one of the foundational texts of Ayurveda. It provides authentic, scriptural-based Ayurvedic knowledge through a modern, interactive chat interface — now with multilingual support and a live treatment comparison engine.
 
+## 🎬 Demo
+
+[![Watch AyurBot Demo](https://drive.google.com/thumbnail?id=1aCxYTubrsitu7pnc42kZs656wr82qtKN&sz=w960)](https://drive.google.com/file/d/1aCxYTubrsitu7pnc42kZs656wr82qtKN/view?usp=sharing)
+
+> Click the thumbnail to watch the full demo video.
+
 ## 🚀 Overview
 
 AyurBot uses a **Retrieval-Augmented Generation (RAG)** pipeline to ensure that its answers are not just AI-generated but are grounded in the actual verses (Shlokas) of the Charaka Samhita.
